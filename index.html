@@ -1,11 +1,1060 @@
-<!DOCKTYPE html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<title>No idea mate</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1HP — Boss Fight</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+ 
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+ 
+  :root {
+    --bg:        #07090f;
+    --panel:     #0d1117;
+    --accent:    #00ffe7;
+    --danger:    #ff2d55;
+    --warn:      #ffcc00;
+    --text:      #c8d6e5;
+    --dim:       #3a4a5c;
+  }
+ 
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+ 
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,.18) 3px,
+      rgba(0,0,0,.18) 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+  }
+ 
+  #wrapper {
+    position: relative;
+    border: 1px solid var(--dim);
+    box-shadow: 0 0 40px rgba(0,255,231,.08), 0 0 2px var(--accent);
+  }
+ 
+  canvas {
+    display: block;
+    background: #070b12;
+  }
+ 
+  /* HUD */
+  #hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--dim);
+    gap: 20px;
+    font-size: 11px;
+    letter-spacing: .08em;
+    color: var(--dim);
+    text-transform: uppercase;
+  }
+ 
+  #hud .label { color: var(--dim); }
+ 
+  #boss-bar-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+ 
+  #boss-bar-track {
+    flex: 1;
+    height: 8px;
+    background: #1a2030;
+    border: 1px solid var(--dim);
+    position: relative;
+  }
+ 
+  #boss-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--danger), #ff6b35);
+    transition: width .25s;
+    position: relative;
+  }
+ 
+  #boss-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: #fff;
+    opacity: .6;
+  }
+ 
+  #phase-tag {
+    font-family: 'Orbitron', monospace;
+    font-size: 9px;
+    color: var(--warn);
+    white-space: nowrap;
+  }
+ 
+  #player-hp {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+ 
+  #controls-hint {
+    font-size: 9px;
+    color: var(--dim);
+    text-align: center;
+    padding: 6px;
+    background: var(--panel);
+    border-top: 1px solid var(--dim);
+    letter-spacing: .06em;
+  }
+ 
+  /* Overlay screens */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(7,9,15,.92);
+    z-index: 10;
+    gap: 18px;
+  }
+ 
+  .screen h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(24px, 5vw, 42px);
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+ 
+  .screen .sub {
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: .1em;
+    text-align: center;
+    line-height: 1.8;
+  }
+ 
+  .screen .btn {
+    margin-top: 8px;
+    padding: 10px 36px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    letter-spacing: .15em;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background .2s, color .2s;
+  }
+ 
+  .screen .btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+  }
+ 
+  #start-screen h1  { color: var(--accent); text-shadow: 0 0 30px rgba(0,255,231,.4); }
+  #gameover-screen h1 { color: var(--danger); text-shadow: 0 0 30px rgba(255,45,85,.5); }
+  #win-screen h1    { color: var(--warn); text-shadow: 0 0 30px rgba(255,204,0,.4); }
+ 
+  #boss-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    color: var(--danger);
+    letter-spacing: .12em;
+    white-space: nowrap;
+  }
+ 
+  .hidden { display: none !important; }
+ 
+  /* Damage flash */
+  #flash {
+    position: absolute;
+    inset: 0;
+    background: var(--danger);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9;
+    transition: opacity .05s;
+  }
+</style>
 </head>
 <body>
-<div style="background-color: black;">
-<div style="color: white;">
-<p> I........ </p>
-<p> I just died in your arms tonightt..... </p>
+ 
+<div id="wrapper">
+  <!-- HUD -->
+  <div id="hud">
+    <span id="player-hp">❤ 1 HP</span>
+    <div id="boss-bar-wrap">
+      <span class="label">BOSS</span>
+      <div id="boss-bar-track"><div id="boss-bar-fill"></div></div>
+      <span id="phase-tag">PHASE 1</span>
+    </div>
+    <span id="boss-name">VOID HERALD</span>
+  </div>
+ 
+  <!-- Canvas -->
+  <canvas id="c" width="720" height="480"></canvas>
+ 
+  <!-- Controls hint -->
+  <div id="controls-hint">WASD / ARROWS — MOVE &nbsp;|&nbsp; SPACE — ATTACK &nbsp;|&nbsp; DODGE EVERYTHING — YOU ONLY HAVE 1 HP</div>
+ 
+  <!-- Damage flash overlay -->
+  <div id="flash"></div>
+ 
+  <!-- Screens -->
+  <div id="start-screen" class="screen">
+    <h1>1 HP</h1>
+    <div class="sub">You have exactly one health point.<br>The boss has five.<br>Good luck.</div>
+    <button class="btn" id="start-btn">ENTER THE ARENA</button>
+  </div>
+ 
+  <div id="gameover-screen" class="screen hidden">
+    <h1>YOU DIED</h1>
+    <div class="sub" id="go-message">One hit. That's all it took.</div>
+    <button class="btn" id="retry-btn">TRY AGAIN</button>
+  </div>
+ 
+  <div id="win-screen" class="screen hidden">
+    <h1>BOSS SLAIN</h1>
+    <div class="sub">The Void Herald has fallen.<br>You survived with exactly 1 HP remaining.</div>
+    <button class="btn" id="win-retry-btn">CHALLENGE AGAIN</button>
+  </div>
+</div>
+ 
+<script>
+// ─────────────────────────────────────────────
+//  CANVAS & CONTEXT
+// ─────────────────────────────────────────────
+const canvas  = document.getElementById('c');
+const ctx     = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+ 
+// ─────────────────────────────────────────────
+//  SOUND ENGINE  (Web Audio API — no assets)
+// ─────────────────────────────────────────────
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+ 
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+}
+ 
+/**
+ * Play a synthesised sound.
+ * @param {string} type  - 'hit','shoot','playerHit','charge','win','death'
+ */
+function playSound(type) {
+  try {
+    ensureAudio();
+    const ac = audioCtx;
+ 
+    const osc  = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain);
+    gain.connect(ac.destination);
+ 
+    const t = ac.currentTime;
+ 
+    switch (type) {
+      case 'hit':         // Player hits boss
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(440, t);
+        osc.frequency.exponentialRampToValueAtTime(220, t + .12);
+        gain.gain.setValueAtTime(.18, t);
+        gain.gain.exponentialRampToValueAtTime(.001, t + .15);
+        osc.start(t); osc.stop(t + .15);
+        break;
+ 
+      case 'shoot':       // Boss fires projectile
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(660, t);
+        osc.frequency.exponentialRampToValueAtTime(330, t + .1);
+        gain.gain.setValueAtTime(.1, t);
+        gain.gain.exponentialRampToValueAtTime(.001, t + .1);
+        osc.start(t); osc.stop(t + .1);
+        break;
+ 
+      case 'playerHit':   // Player gets hit
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(120, t);
+        osc.frequency.exponentialRampToValueAtTime(60, t + .3);
+        gain.gain.setValueAtTime(.3, t);
+        gain.gain.exponentialRampToValueAtTime(.001, t + .3);
+        osc.start(t); osc.stop(t + .3);
+        break;
+ 
+      case 'charge':      // Boss charges
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(80, t);
+        osc.frequency.exponentialRampToValueAtTime(200, t + .2);
+        gain.gain.setValueAtTime(.15, t);
+        gain.gain.exponentialRampToValueAtTime(.001, t + .25);
+        osc.start(t); osc.stop(t + .25);
+        break;
+ 
+      case 'win':
+        osc.type = 'sine';
+        [523, 659, 784, 1046].forEach((freq, i) => {
+          const o2  = ac.createOscillator();
+          const g2  = ac.createGain();
+          o2.connect(g2); g2.connect(ac.destination);
+          o2.type = 'sine';
+          o2.frequency.setValueAtTime(freq, t + i * .15);
+          g2.gain.setValueAtTime(.15, t + i * .15);
+          g2.gain.exponentialRampToValueAtTime(.001, t + i * .15 + .3);
+          o2.start(t + i * .15); o2.stop(t + i * .15 + .3);
+        });
+        return;
+ 
+      case 'death':
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, t);
+        osc.frequency.exponentialRampToValueAtTime(50, t + .5);
+        gain.gain.setValueAtTime(.25, t);
+        gain.gain.exponentialRampToValueAtTime(.001, t + .5);
+        osc.start(t); osc.stop(t + .5);
+        break;
+    }
+  } catch(e) { /* Audio blocked — silently fail */ }
+}
+ 
+// ─────────────────────────────────────────────
+//  GAME STATE
+// ─────────────────────────────────────────────
+const BOSS_MAX_HP = 5;
+ 
+let keys     = {};        // Currently pressed keys
+let gameState = 'start';  // 'start' | 'playing' | 'gameover' | 'win'
+let particles = [];       // Visual particles
+let projectiles = [];     // Boss's projectiles
+let lastTime  = 0;
+ 
+/** Player object */
+let player;
+ 
+/** Boss object */
+let boss;
+ 
+/** Flash overlay */
+const flashEl = document.getElementById('flash');
+ 
+// ─────────────────────────────────────────────
+//  INIT / RESET
+// ─────────────────────────────────────────────
+function initGame() {
+  particles   = [];
+  projectiles = [];
+ 
+  // Player starts bottom-centre
+  player = {
+    x: W / 2,
+    y: H - 80,
+    r: 14,          // Radius
+    speed: 200,     // px/s
+    canAttack: true,
+    attackCooldown: 0,
+    attackCooldownMax: .4,  // seconds
+    attackRange: 80,
+    attackActive: false,
+    attackTimer: 0,
+    invincible: false,      // Brief i-frames on hit (not used — 1HP = instant death)
+    // Wobble for idle animation
+    wobble: 0,
+    trail: [],              // Motion trail positions
+  };
+ 
+  // Boss starts top-centre
+  boss = {
+    x: W / 2,
+    y: 110,
+    r: 36,
+    maxHp: BOSS_MAX_HP,
+    hp: BOSS_MAX_HP,
+    // AI state machine
+    state: 'idle',         // 'idle' | 'shooting' | 'charging' | 'recovering'
+    stateTimer: 0,
+    actionTimer: 0,        // Countdown to next action
+    chargeVx: 0,
+    chargeVy: 0,
+    chargeSpeed: 420,
+    // Visuals
+    wobble: 0,
+    hitFlash: 0,           // Timer for white flash on hit
+    phase: 1,              // 1 or 2 (phase 2 below 40% HP)
+    shootBurst: 0,         // Remaining shots in a burst
+    shootTimer: 0,
+  };
+ 
+  updateHUD();
+  requestAnimationFrame(gameLoop);
+}
+ 
+// ─────────────────────────────────────────────
+//  HUD UPDATE
+// ─────────────────────────────────────────────
+function updateHUD() {
+  const pct = (boss.hp / boss.maxHp) * 100;
+  document.getElementById('boss-bar-fill').style.width = pct + '%';
+ 
+  const phase = boss.hp <= Math.floor(boss.maxHp * .4) ? 2 : 1;
+  boss.phase  = phase;
+  document.getElementById('phase-tag').textContent = phase === 2 ? 'PHASE 2 ⚡' : 'PHASE 1';
+}
+ 
+// ─────────────────────────────────────────────
+//  GAME LOOP
+// ─────────────────────────────────────────────
+function gameLoop(ts) {
+  if (gameState !== 'playing') return;
+ 
+  const dt = Math.min((ts - lastTime) / 1000, .05); // cap at 50ms
+  lastTime = ts;
+ 
+  update(dt);
+  render();
+ 
+  requestAnimationFrame(gameLoop);
+}
+ 
+// ─────────────────────────────────────────────
+//  UPDATE
+// ─────────────────────────────────────────────
+function update(dt) {
+  updatePlayer(dt);
+  updateBoss(dt);
+  updateProjectiles(dt);
+  updateParticles(dt);
+  checkCollisions();
+}
+ 
+// ── Player ──────────────────────────────────
+function updatePlayer(dt) {
+  const p = player;
+  const spd = p.speed * dt;
+ 
+  // Movement — store trail for visual effect
+  const prevX = p.x, prevY = p.y;
+ 
+  if (keys['ArrowLeft']  || keys['a'] || keys['A']) p.x -= spd;
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) p.x += spd;
+  if (keys['ArrowUp']    || keys['w'] || keys['W']) p.y -= spd;
+  if (keys['ArrowDown']  || keys['s'] || keys['S']) p.y += spd;
+ 
+  // Clamp inside canvas
+  p.x = Math.max(p.r, Math.min(W - p.r, p.x));
+  p.y = Math.max(p.r, Math.min(H - p.r, p.y));
+ 
+  // Trail
+  if (Math.abs(p.x - prevX) > 1 || Math.abs(p.y - prevY) > 1) {
+    p.trail.push({ x: prevX, y: prevY, life: 1 });
+  }
+  p.trail.forEach(t => t.life -= dt * 6);
+  p.trail = p.trail.filter(t => t.life > 0);
+ 
+  // Idle wobble
+  p.wobble += dt * 3;
+ 
+  // Attack cooldown
+  if (!p.canAttack) {
+    p.attackCooldown -= dt;
+    if (p.attackCooldown <= 0) {
+      p.canAttack = true;
+      p.attackCooldown = 0;
+    }
+  }
+ 
+  // Attack active timer (visual swing)
+  if (p.attackActive) {
+    p.attackTimer -= dt;
+    if (p.attackTimer <= 0) p.attackActive = false;
+  }
+}
+ 
+// ── Boss AI ──────────────────────────────────
+function updateBoss(dt) {
+  const b  = boss;
+  const p  = player;
+  const ph = b.phase;
+ 
+  // Phase multipliers — faster & more aggressive in phase 2
+  const speedMult    = ph === 2 ? 1.5 : 1;
+  const cooldownMult = ph === 2 ? .65 : 1;
+ 
+  b.wobble += dt * (ph === 2 ? 4 : 2);
+  if (b.hitFlash > 0) b.hitFlash -= dt;
+ 
+  // Action timer
+  b.stateTimer += dt;
+ 
+  switch (b.state) {
+ 
+    case 'idle': {
+      // Wait a moment, then pick an action
+      const idleTime = 1.2 * cooldownMult;
+      if (b.stateTimer >= idleTime) {
+        b.stateTimer = 0;
+        // Choose action: in phase 2, charge more often
+        const roll = Math.random();
+        if (roll < (ph === 2 ? .45 : .35)) {
+          startCharge();
+        } else {
+          startShooting();
+        }
+      }
+      break;
+    }
+ 
+    case 'shooting': {
+      // Burst shoot — shoot every 0.25s for N shots
+      b.shootTimer -= dt;
+      if (b.shootTimer <= 0) {
+        if (b.shootBurst > 0) {
+          fireProjectile(speedMult);
+          b.shootBurst--;
+          b.shootTimer = .28 * cooldownMult;
+        } else {
+          b.state = 'recovering';
+          b.stateTimer = 0;
+        }
+      }
+      break;
+    }
+ 
+    case 'charging': {
+      // Move in charge direction
+      b.x += b.chargeVx * dt;
+      b.y += b.chargeVy * dt;
+ 
+      // Bounce off walls
+      if (b.x - b.r < 0)   { b.x = b.r;     b.chargeVx =  Math.abs(b.chargeVx); }
+      if (b.x + b.r > W)   { b.x = W - b.r; b.chargeVx = -Math.abs(b.chargeVx); }
+      if (b.y - b.r < 30)  { b.y = 30 + b.r; b.chargeVy =  Math.abs(b.chargeVy); }
+      if (b.y + b.r > H)   { b.y = H - b.r; b.chargeVy = -Math.abs(b.chargeVy); }
+ 
+      const chargeDur = .55 * cooldownMult;
+      if (b.stateTimer >= chargeDur) {
+        b.state = 'recovering';
+        b.stateTimer = 0;
+      }
+      break;
+    }
+ 
+    case 'recovering': {
+      const recoverTime = .8 * cooldownMult;
+      if (b.stateTimer >= recoverTime) {
+        b.state = 'idle';
+        b.stateTimer = 0;
+      }
+      break;
+    }
+  }
+}
+ 
+function startCharge() {
+  const b = boss;
+  const p = player;
+  const dx = p.x - b.x;
+  const dy = p.y - b.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const spd  = b.chargeSpeed * (b.phase === 2 ? 1.4 : 1);
+  b.chargeVx = (dx / dist) * spd;
+  b.chargeVy = (dy / dist) * spd;
+  b.state = 'charging';
+  b.stateTimer = 0;
+  playSound('charge');
+}
+ 
+function startShooting() {
+  const b = boss;
+  b.state = 'shooting';
+  b.stateTimer = 0;
+  b.shootBurst = b.phase === 2 ? 5 : 3;  // more shots in phase 2
+  b.shootTimer = 0;
+}
+ 
+function fireProjectile(speedMult = 1) {
+  const b  = boss;
+  const p  = player;
+  const dx = p.x - b.x;
+  const dy = p.y - b.y;
+  const dist = Math.hypot(dx, dy) || 1;
+ 
+  // Slight spread for phase 2
+  const spread = b.phase === 2 ? (Math.random() - .5) * .4 : 0;
+  const angle  = Math.atan2(dy, dx) + spread;
+  const spd    = 230 * speedMult;
+ 
+  projectiles.push({
+    x: b.x,
+    y: b.y,
+    vx: Math.cos(angle) * spd,
+    vy: Math.sin(angle) * spd,
+    r: 7,
+    life: 3,  // seconds until auto-expire
+  });
+ 
+  playSound('shoot');
+}
+ 
+// ── Projectiles ──────────────────────────────
+function updateProjectiles(dt) {
+  for (const pr of projectiles) {
+    pr.x += pr.vx * dt;
+    pr.y += pr.vy * dt;
+    pr.life -= dt;
+  }
+  // Remove expired / off-screen
+  projectiles = projectiles.filter(pr =>
+    pr.life > 0 &&
+    pr.x > -pr.r && pr.x < W + pr.r &&
+    pr.y > -pr.r && pr.y < H + pr.r
+  );
+}
+ 
+// ── Particles ────────────────────────────────
+function spawnParticles(x, y, count, color, speed = 120) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const spd   = speed * (.3 + Math.random() * .7);
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      life: 1,
+      maxLife: .6 + Math.random() * .4,
+      r: 2 + Math.random() * 3,
+      color,
+    });
+  }
+}
+ 
+function updateParticles(dt) {
+  for (const pt of particles) {
+    pt.x    += pt.vx * dt;
+    pt.y    += pt.vy * dt;
+    pt.vx   *= 1 - dt * 3;
+    pt.vy   *= 1 - dt * 3;
+    pt.life -= dt / pt.maxLife;
+  }
+  particles = particles.filter(pt => pt.life > 0);
+}
+ 
+// ── Collisions ───────────────────────────────
+function checkCollisions() {
+  const p = player;
+  const b = boss;
+ 
+  // Projectile → Player
+  for (const pr of projectiles) {
+    if (circleOverlap(p, pr)) {
+      killPlayer('A projectile found its mark.');
+      return;
+    }
+  }
+ 
+  // Boss body → Player (charging or just touching)
+  if (circleOverlap(p, b)) {
+    killPlayer('The boss crushed you.');
+    return;
+  }
+ 
+  // Player attack → Boss
+  if (p.attackActive && p.canAttack === false) {
+    // Attack hitbox: a circle projected toward the boss
+    const dx   = b.x - p.x;
+    const dy   = b.y - p.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist <= p.r + b.r + p.attackRange) {
+      // Only registers once per swing (set attackActive off after hit)
+      damageBoss();
+      p.attackActive = false;   // Prevent multi-hit per swing
+    }
+  }
+}
+ 
+function circleOverlap(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.hypot(dx, dy) < a.r + b.r;
+}
+ 
+function damageBoss() {
+  boss.hp = Math.max(0, boss.hp - 1);
+  boss.hitFlash = .15;
+  spawnParticles(boss.x, boss.y, 10, '#ff2d55', 160);
+  playSound('hit');
+  updateHUD();
+ 
+  if (boss.hp <= 0) {
+    winGame();
+  }
+}
+ 
+function killPlayer(reason) {
+  spawnParticles(player.x, player.y, 20, '#00ffe7', 200);
+  playSound('playerHit');
+ 
+  // Flash red
+  flashEl.style.opacity = '.55';
+  setTimeout(() => { flashEl.style.opacity = '0'; }, 150);
+ 
+  gameState = 'gameover';
+  document.getElementById('go-message').textContent = reason;
+  setTimeout(() => {
+    document.getElementById('gameover-screen').classList.remove('hidden');
+  }, 400);
+}
+ 
+function winGame() {
+  spawnParticles(boss.x, boss.y, 40, '#ffcc00', 240);
+  playSound('win');
+  gameState = 'win';
+  setTimeout(() => {
+    document.getElementById('win-screen').classList.remove('hidden');
+  }, 600);
+}
+ 
+// ─────────────────────────────────────────────
+//  RENDER
+// ─────────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, W, H);
+ 
+  // Background grid (subtle)
+  drawGrid();
+ 
+  // Particles (behind characters)
+  drawParticles();
+ 
+  // Player trail
+  drawPlayerTrail();
+ 
+  // Attack arc
+  if (player.attackActive) drawAttackArc();
+ 
+  // Player
+  drawPlayer();
+ 
+  // Boss
+  drawBoss();
+ 
+  // Projectiles
+  drawProjectiles();
+ 
+  // Warning indicators for phase 2
+  if (boss.phase === 2) drawPhaseWarning();
+}
+ 
+function drawGrid() {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,255,231,.04)';
+  ctx.lineWidth = 1;
+  const sz = 40;
+  for (let x = 0; x < W; x += sz) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += sz) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+}
+ 
+function drawParticles() {
+  for (const pt of particles) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, pt.life);
+    ctx.fillStyle   = pt.color;
+    ctx.shadowColor = pt.color;
+    ctx.shadowBlur  = 8;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, pt.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+ 
+function drawPlayerTrail() {
+  for (const t of player.trail) {
+    ctx.save();
+    ctx.globalAlpha = t.life * .35;
+    ctx.fillStyle   = '#00ffe7';
+    ctx.shadowColor = '#00ffe7';
+    ctx.shadowBlur  = 10;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, player.r * .7 * t.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+ 
+function drawAttackArc() {
+  const p   = player;
+  const b   = boss;
+  const dx  = b.x - p.x;
+  const dy  = b.y - p.y;
+  const ang = Math.atan2(dy, dx);
+ 
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,255,231,.55)';
+  ctx.lineWidth   = 3;
+  ctx.shadowColor = '#00ffe7';
+  ctx.shadowBlur  = 12;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, p.r + p.attackRange, ang - .6, ang + .6);
+  ctx.stroke();
+  ctx.restore();
+}
+ 
+function drawPlayer() {
+  const p    = player;
+  const bob  = Math.sin(p.wobble) * 2;
+ 
+  ctx.save();
+  // Glow
+  ctx.shadowColor = '#00ffe7';
+  ctx.shadowBlur  = 18;
+ 
+  // Body
+  ctx.fillStyle = '#00ffe7';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y + bob, p.r, 0, Math.PI * 2);
+  ctx.fill();
+ 
+  // Inner highlight
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.beginPath();
+  ctx.arc(p.x - 4, p.y + bob - 4, p.r * .35, 0, Math.PI * 2);
+  ctx.fill();
+ 
+  // Direction indicator — tiny dot toward boss
+  const dx   = boss.x - p.x;
+  const dy   = boss.y - p.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  ctx.fillStyle = '#001a1a';
+  ctx.beginPath();
+  ctx.arc(p.x + (dx / dist) * (p.r * .5), p.y + bob + (dy / dist) * (p.r * .5), 3, 0, Math.PI * 2);
+  ctx.fill();
+ 
+  ctx.restore();
+}
+ 
+function drawBoss() {
+  const b   = boss;
+  const bob = Math.sin(b.wobble) * (b.phase === 2 ? 5 : 3);
+  const isHit = b.hitFlash > 0;
+ 
+  ctx.save();
+ 
+  // Outer aura
+  const auraColor = b.phase === 2 ? '#ff6b35' : '#ff2d55';
+  ctx.shadowColor = auraColor;
+  ctx.shadowBlur  = 30 + Math.sin(b.wobble * .5) * 10;
+ 
+  // Body
+  ctx.fillStyle = isHit ? '#ffffff' : (b.phase === 2 ? '#c0392b' : '#8b0000');
+  ctx.beginPath();
+  ctx.arc(b.x, b.y + bob, b.r, 0, Math.PI * 2);
+  ctx.fill();
+ 
+  // Rim
+  ctx.strokeStyle = isHit ? '#ffffff' : auraColor;
+  ctx.lineWidth   = 3;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y + bob, b.r, 0, Math.PI * 2);
+  ctx.stroke();
+ 
+  // Inner "eye" pattern
+  if (!isHit) {
+    const eyeAngle = Math.atan2(player.y - b.y, player.x - b.x);
+    // Pupil follows player
+    ctx.fillStyle = '#ff2d55';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(
+      b.x + Math.cos(eyeAngle) * b.r * .4,
+      b.y + bob + Math.sin(eyeAngle) * b.r * .4,
+      b.r * .22, 0, Math.PI * 2
+    );
+    ctx.fill();
+ 
+    // Core void dot
+    ctx.fillStyle = '#000';
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.arc(
+      b.x + Math.cos(eyeAngle) * b.r * .4,
+      b.y + bob + Math.sin(eyeAngle) * b.r * .4,
+      b.r * .1, 0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+ 
+  // Orbiting ring in phase 2
+  if (b.phase === 2) {
+    const ringAngle = b.wobble * .8;
+    ctx.strokeStyle = 'rgba(255,107,53,.6)';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#ff6b35';
+    ctx.save();
+    ctx.translate(b.x, b.y + bob);
+    ctx.rotate(ringAngle);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, b.r + 14, b.r * .4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+ 
+  ctx.restore();
+}
+ 
+function drawProjectiles() {
+  for (const pr of projectiles) {
+    ctx.save();
+    ctx.fillStyle   = '#ff2d55';
+    ctx.shadowColor = '#ff2d55';
+    ctx.shadowBlur  = 16;
+    ctx.beginPath();
+    ctx.arc(pr.x, pr.y, pr.r, 0, Math.PI * 2);
+    ctx.fill();
+    // Core
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(pr.x, pr.y, pr.r * .4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+ 
+function drawPhaseWarning() {
+  // Pulsing red vignette in phase 2
+  const pulse = (Math.sin(Date.now() / 300) + 1) / 2;
+  const grad  = ctx.createRadialGradient(W/2, H/2, H/3, W/2, H/2, H*.8);
+  grad.addColorStop(0, 'transparent');
+  grad.addColorStop(1, `rgba(255,45,85,${.08 + pulse * .06})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+ 
+// ─────────────────────────────────────────────
+//  INPUT
+// ─────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+ 
+  // Attack on spacebar (not while on cooldown)
+  if (e.key === ' ' && gameState === 'playing') {
+    e.preventDefault();
+    if (player.canAttack) {
+      player.canAttack     = false;
+      player.attackCooldown = player.attackCooldownMax;
+      player.attackActive   = true;
+      player.attackTimer    = .15;  // how long the hit window lasts
+    }
+  }
+ 
+  // Prevent arrow key scrolling
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) {
+    e.preventDefault();
+  }
+});
+ 
+window.addEventListener('keyup', e => {
+  keys[e.key] = false;
+});
+ 
+// ─────────────────────────────────────────────
+//  UI BUTTONS
+// ─────────────────────────────────────────────
+document.getElementById('start-btn').addEventListener('click', () => {
+  ensureAudio();
+  document.getElementById('start-screen').classList.add('hidden');
+  gameState = 'playing';
+  lastTime  = performance.now();
+  initGame();
+});
+ 
+document.getElementById('retry-btn').addEventListener('click', () => {
+  ensureAudio();
+  document.getElementById('gameover-screen').classList.add('hidden');
+  projectiles = [];
+  particles   = [];
+  gameState   = 'playing';
+  lastTime    = performance.now();
+  initGame();
+});
+ 
+document.getElementById('win-retry-btn').addEventListener('click', () => {
+  ensureAudio();
+  document.getElementById('win-screen').classList.add('hidden');
+  gameState = 'playing';
+  lastTime  = performance.now();
+  initGame();
+});
+ 
+// ─────────────────────────────────────────────
+//  INITIAL CANVAS DRAW (start screen backdrop)
+// ─────────────────────────────────────────────
+(function drawStartBackdrop() {
+  ctx.clearRect(0, 0, W, H);
+ 
+  // Grid
+  ctx.strokeStyle = 'rgba(0,255,231,.04)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+ 
+  // Fake boss silhouette
+  ctx.save();
+  ctx.shadowColor = '#ff2d55';
+  ctx.shadowBlur  = 50;
+  ctx.fillStyle   = '#3a0010';
+  ctx.beginPath();
+  ctx.arc(W / 2, H / 2 - 20, 54, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+ 
+  // Fake player silhouette
+  ctx.save();
+  ctx.shadowColor = '#00ffe7';
+  ctx.shadowBlur  = 30;
+  ctx.fillStyle   = '#002d2d';
+  ctx.beginPath();
+  ctx.arc(W / 2, H / 2 + 100, 18, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+})();
+</script>
+</body>
 </html>
